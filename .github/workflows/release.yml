@@ -3,12 +3,13 @@ name: Release
 # On every push to main: test, build the image, push it to the registry, and ask
 # the infra repo to deploy it to staging. Production is promoted from the infra
 # repo (Actions -> Deploy -> Run workflow), never from here.
+# Each step is scripts/ci.sh; run it locally the same way.
 #
 # Settings (this repo):
-#   vars.REGISTRY                   registry.digitalocean.com/<name>
-#   vars.INFRA_REPO                 owner/repo of the infra repo (default forinda/forinda-tf-playground)
+#   vars.REGISTRY                        registry.digitalocean.com/<name>
+#   vars.INFRA_REPO                      owner/repo of the infra repo (default forinda/forinda-tf-playground)
 #   secrets.DIGITALOCEAN_REGISTRY_TOKEN  DigitalOcean token, scope registry: read/write
-#   secrets.DEPLOY_DISPATCH_TOKEN   fine-grained GitHub token on the infra repo, Contents: read/write
+#   secrets.DEPLOY_DISPATCH_TOKEN        fine-grained GitHub token on the infra repo, Contents: read/write
 on:
   push:
     branches: [main]
@@ -27,46 +28,33 @@ jobs:
     container: node:24
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: corepack enable && pnpm install --frozen-lockfile
-      - run: pnpm test
-      - run: npx clarusjs check
+      - run: scripts/ci.sh test
 
   image:
     needs: test
     runs-on: ubuntu-latest
     outputs:
-      tag: ${{ steps.tag.outputs.tag }}
+      tag: ${{ steps.push.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - id: tag
-        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"   # same as git rev-parse --short
-      - name: Build and push
+      - id: push
         env:
           REGISTRY: ${{ vars.REGISTRY }}
-          TOKEN: ${{ secrets.DIGITALOCEAN_REGISTRY_TOKEN }}
-          TAG: ${{ steps.tag.outputs.tag }}
+          REGISTRY_TOKEN: ${{ secrets.DIGITALOCEAN_REGISTRY_TOKEN }}
         run: |
-          set -euo pipefail
-          [[ $REGISTRY =~ ^registry\.digitalocean\.com/[a-z0-9-]+$ ]] || { echo "set repo variable REGISTRY"; exit 1; }
-          printf '%s' "$TOKEN" | docker login registry.digitalocean.com -u token --password-stdin
-          docker build --platform linux/amd64 -t "$REGISTRY/foter-ui:$TAG" .
-          docker push "$REGISTRY/foter-ui:$TAG"
-          echo "Pushed \`$REGISTRY/foter-ui:$TAG\`." >> "$GITHUB_STEP_SUMMARY"
-      - name: Log out
-        if: always()
-        run: docker logout registry.digitalocean.com
+          tag=$(scripts/ci.sh image)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Pushed \`$REGISTRY/foter-ui:$tag\`." >> "$GITHUB_STEP_SUMMARY"
 
   deploy-staging:
     needs: image
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch deploy to the infra repo
-        env:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - env:
+          TAG: ${{ needs.image.outputs.tag }}
           GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
           INFRA_REPO: ${{ vars.INFRA_REPO || 'forinda/forinda-tf-playground' }}
-          TAG: ${{ needs.image.outputs.tag }}
         run: |
-          set -euo pipefail
-          jq -n --arg tag "$TAG" '{event_type: "deploy", client_payload: {app: "foter-ui", environment: "staging", tag: $tag}}' \
-            | gh api "repos/$INFRA_REPO/dispatches" --input -
+          scripts/ci.sh deploy-staging
           echo "Requested staging deploy of foter-ui:$TAG in $INFRA_REPO." >> "$GITHUB_STEP_SUMMARY"
