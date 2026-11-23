@@ -6,15 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test 'test/*.test.ts'"
   },
   "devDependencies": {
     "@clarusjs/prettier-plugin": "^0.1.0",
+    "@iconify-json/lucide": "^1.2.158",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
     "prettier": "^3.10.1",
     "typescript": "~7.0.2",
     "vite": "^8.3.6"
   },
   "dependencies": {
-    "clarusjs": "^0.14.0"
+    "clarusjs": "^0.14.0",
+    "pg": "^8.23.1"
   }
 }

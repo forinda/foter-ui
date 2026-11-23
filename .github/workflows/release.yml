@@ -1,0 +1,60 @@
+name: Release
+
+# On every push to main: test, build the image, push it to the registry, and ask
+# the infra repo to deploy it to staging. Production is promoted from the infra
+# repo (Actions -> Deploy -> Run workflow), never from here.
+# Each step is scripts/ci.sh; run it locally the same way.
+#
+# Settings (this repo):
+#   vars.REGISTRY                        registry.digitalocean.com/<name>
+#   vars.INFRA_REPO                      owner/repo of the infra repo (default forinda/forinda-tf-playground)
+#   secrets.DIGITALOCEAN_REGISTRY_TOKEN  DigitalOcean token, scope registry: read/write
+#   secrets.DEPLOY_DISPATCH_TOKEN        fine-grained GitHub token on the infra repo, Contents: read/write
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: node:24
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/ci.sh test
+
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.push.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: push
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          REGISTRY_TOKEN: ${{ secrets.DIGITALOCEAN_REGISTRY_TOKEN }}
+        run: |
+          tag=$(scripts/ci.sh image)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Pushed \`$REGISTRY/foter-ui:$tag\`." >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-staging:
+    needs: image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - env:
+          TAG: ${{ needs.image.outputs.tag }}
+          GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
+          INFRA_REPO: ${{ vars.INFRA_REPO || 'forinda/forinda-tf-playground' }}
+        run: |
+          scripts/ci.sh deploy-staging
+          echo "Requested staging deploy of foter-ui:$TAG in $INFRA_REPO." >> "$GITHUB_STEP_SUMMARY"

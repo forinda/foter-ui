@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 # .gitignore
 .clarusjs/
+# Local env (DB credentials)
+.env
