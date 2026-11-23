@@ -7,4 +7,9 @@ try {
   process.loadEnvFile()
 } catch {}
 
-export default defineConfig({ plugins: [clarusjs()] })
+export default defineConfig({
+  plugins: [clarusjs()],
+  // In the cluster, `vite preview` serves real traffic. Staging is reached as
+  // staging.<ip>.sslip.io (IP hosts are always allowed); add your domain here when there is one.
+  preview: { allowedHosts: ['.sslip.io'] },
+})
