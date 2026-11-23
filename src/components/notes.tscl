@@ -1,10 +1,18 @@
+@import Icon from '~/components/icon.tscl'
+
 <script>
   import { json, resource } from 'clarusjs/fetch'
 
+  const MAX = 500
   const notes = resource(({ signal }) => json('/api/notes', { signal }))
   let draft = state('')
   let error = state('')
   let saving = state(false)
+  let fresh = state(0)
+  const left = derived(() => MAX - draft.length)
+
+  const when = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  const stamp = (iso) => when.format(new Date(iso))
 
   async function add() {
     saving = true
@@ -15,46 +23,123 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ body: draft }),
       })
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        error = (await res.json().catch(() => null))?.error ?? 'Could not save the note.'
+        error = data?.error ?? 'The note wasn’t saved. Try again.'
         return
       }
       draft = ''
+      fresh = data.id
       notes.refetch()
     } catch {
-      error = 'Could not reach the server.'
+      error = 'Can’t reach the server. Check your connection and try again.'
     } finally {
       saving = false
     }
   }
 </script>
 
-<section>
+<section class="notes">
   <form (submit)="$event.preventDefault(); add()">
-    <label for="note">New note</label>
-    <textarea id="note" maxlength="500" required [value]="draft" (input)="draft = $event.target.value"></textarea>
-    <button type="submit" [disabled]="saving">Add note</button>
+    <label for="note"><Icon [name]="'pencil'" /> Write a note</label>
+    <textarea
+      id="note"
+      maxlength="500"
+      required
+      placeholder="What should the database remember?"
+      [value]="draft"
+      (input)="draft = $event.target.value"
+    ></textarea>
+    <div class="actions">
+      <span class="count" [class.low]="left < 50" aria-live="polite">{{ left }} characters left</span>
+      <button type="submit" [disabled]="saving"><Icon [name]="'plus'" /> {{ saving ? 'Adding…' : 'Add note' }}</button>
+    </div>
     @if (error) {
-      <p role="alert">{{ error }}</p>
+      <p class="error" role="alert"><Icon [name]="'alert'" /> {{ error }}</p>
     }
   </form>
 
   @if (notes.value) {
-    <ul>
+    <ol class="log">
       @for (note of notes.value; track note.id) {
-        <li>{{ note.body }}</li>
+        <li [class.fresh]="note.id === fresh">
+          <time [datetime]="note.created_at"><Icon [name]="'clock'" /> {{ stamp(note.created_at) }}</time>
+          <p>{{ note.body }}</p>
+        </li>
       } @empty {
-        <li>No notes yet.</li>
+        <li class="empty"><Icon [name]="'inbox'" /><p>No notes yet. Your first one goes straight into Postgres.</p></li>
       }
-    </ul>
+    </ol>
   } @else if (notes.error) {
-    <p role="alert">Couldn't load notes. Reload the page to try again.</p>
+    <p class="error" role="alert"><Icon [name]="'alert'" /> Notes couldn’t load. The database may be starting up. Reload the page in a moment.</p>
   } @else {
-    <p>Loading…</p>
+    <p class="muted">Loading notes…</p>
   }
 </section>
 
 <style scoped>
-  form { display: grid; gap: 0.5rem; max-width: 32rem; }
-  textarea { min-height: 4rem; font: inherit; }
+  :scope { margin-top: 3rem; }
+
+  form { display: grid; gap: 0.625rem; }
+  label { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; }
+  textarea {
+    min-height: 7.5rem;
+    padding: 0.875rem 1rem;
+    font: inherit;
+    color: var(--ink);
+    background: var(--field);
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    resize: vertical;
+  }
+  textarea::placeholder { color: var(--ink-soft); }
+  textarea:focus-visible { outline-offset: 0; }
+
+  .actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .count { font-size: 0.875rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .count.low { color: var(--danger); }
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.625rem 1.25rem;
+    font: inherit;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--highlight);
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    box-shadow: 3px 3px 0 var(--ink);
+    cursor: pointer;
+  }
+  button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  button:disabled { opacity: 0.6; cursor: progress; }
+
+  .error { display: flex; align-items: center; gap: 0.4rem; color: var(--danger); font-weight: 600; }
+  .muted { margin-top: 2.5rem; color: var(--ink-soft); }
+
+  .log { list-style: none; margin-top: 2.5rem; border-top: 2px solid var(--ink); }
+  .log li {
+    display: grid;
+    grid-template-columns: 11.5rem 1fr;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--grid);
+  }
+  .log time { display: inline-flex; align-items: center; gap: 0.35rem; align-self: start; white-space: nowrap; font-size: 0.875rem; color: var(--ink-soft); padding-top: 0.15rem; font-variant-numeric: tabular-nums; }
+  .log p { overflow-wrap: anywhere; white-space: pre-wrap; }
+  .log .empty { grid-template-columns: auto 1fr; align-items: center; gap: 0.6rem; color: var(--ink-soft); }
+  .log .fresh p { animation: mark 1.6s ease-out; }
+
+  @keyframes mark {
+    from { background: color-mix(in srgb, var(--highlight) 55%, transparent); }
+    to { background: transparent; }
+  }
+
+  @media (max-width: 34rem) {
+    .log li { grid-template-columns: 1fr; gap: 0.25rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .log .fresh p { animation: none; }
+  }
 </style>

@@ -1,14 +1,39 @@
 @import BaseLayout from '~/layout/base-layout.tscl'
 @import Notes from '~/components/notes.tscl'
+@import Icon from '~/components/icon.tscl'
 
 <BaseLayout>
   <main>
-    <h1>Notes</h1>
+    <header>
+      <h1>Notes</h1>
+      <p><Icon [name]="'database'" /> Everything you write here is saved to Postgres, so it survives restarts and redeploys.</p>
+    </header>
     <Notes />
   </main>
 </BaseLayout>
 <style scoped>
+  :scope {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 8vw, 5rem) 1rem 4rem;
+  }
   h1 {
-   color: rgba(83, 240, 15, 0.967);
+    font-size: clamp(4rem, 16vw, 8.5rem);
+    font-weight: 800;
+    font-variation-settings: 'opsz' 96;
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    text-decoration: underline;
+    text-decoration-color: var(--highlight);
+    text-decoration-thickness: 0.12em;
+    text-underline-offset: 0.08em;
+  }
+  header p {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    max-width: 46ch;
+    color: var(--ink-soft);
   }
 </style>
