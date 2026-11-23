@@ -1,0 +1,60 @@
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+
+  const notes = resource(({ signal }) => json('/api/notes', { signal }))
+  let draft = state('')
+  let error = state('')
+  let saving = state(false)
+
+  async function add() {
+    saving = true
+    error = ''
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body: draft }),
+      })
+      if (!res.ok) {
+        error = (await res.json().catch(() => null))?.error ?? 'Could not save the note.'
+        return
+      }
+      draft = ''
+      notes.refetch()
+    } catch {
+      error = 'Could not reach the server.'
+    } finally {
+      saving = false
+    }
+  }
+</script>
+
+<section>
+  <form (submit)="$event.preventDefault(); add()">
+    <label for="note">New note</label>
+    <textarea id="note" maxlength="500" required [value]="draft" (input)="draft = $event.target.value"></textarea>
+    <button type="submit" [disabled]="saving">Add note</button>
+    @if (error) {
+      <p role="alert">{{ error }}</p>
+    }
+  </form>
+
+  @if (notes.value) {
+    <ul>
+      @for (note of notes.value; track note.id) {
+        <li>{{ note.body }}</li>
+      } @empty {
+        <li>No notes yet.</li>
+      }
+    </ul>
+  } @else if (notes.error) {
+    <p role="alert">Couldn't load notes. Reload the page to try again.</p>
+  } @else {
+    <p>Loading…</p>
+  }
+</section>
+
+<style scoped>
+  form { display: grid; gap: 0.5rem; max-width: 32rem; }
+  textarea { min-height: 4rem; font: inherit; }
+</style>
