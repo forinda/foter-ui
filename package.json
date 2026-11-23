@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@clarusjs/prettier-plugin": "^0.1.0",
+    "@iconify-json/lucide": "^1.2.158",
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
     "prettier": "^3.10.1",

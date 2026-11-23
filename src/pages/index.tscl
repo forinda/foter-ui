@@ -1,12 +1,11 @@
 @import BaseLayout from '~/layout/base-layout.tscl'
 @import Notes from '~/components/notes.tscl'
-@import Icon from '~/components/icon.tscl'
 
 <BaseLayout>
   <main>
     <header>
       <h1>Notes</h1>
-      <p><Icon [name]="'database'" /> Everything you write here is saved to Postgres, so it survives restarts and redeploys.</p>
+      <p><icon name="lucide:database" /> Everything you write here is saved to Postgres, so it survives restarts and redeploys.</p>
     </header>
     <Notes />
   </main>

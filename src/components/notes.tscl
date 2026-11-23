@@ -1,5 +1,3 @@
-@import Icon from '~/components/icon.tscl'
-
 <script>
   import { json, resource } from 'clarusjs/fetch'
 
@@ -41,7 +39,7 @@
 
 <section class="notes">
   <form (submit)="$event.preventDefault(); add()">
-    <label for="note"><Icon [name]="'pencil'" /> Write a note</label>
+    <label for="note"><icon name="lucide:pencil" /> Write a note</label>
     <textarea
       id="note"
       maxlength="500"
@@ -52,10 +50,10 @@
     ></textarea>
     <div class="actions">
       <span class="count" [class.low]="left < 50" aria-live="polite">{{ left }} characters left</span>
-      <button type="submit" [disabled]="saving"><Icon [name]="'plus'" /> {{ saving ? 'Adding…' : 'Add note' }}</button>
+      <button type="submit" [disabled]="saving"><icon name="lucide:plus" /> {{ saving ? 'Adding…' : 'Add note' }}</button>
     </div>
     @if (error) {
-      <p class="error" role="alert"><Icon [name]="'alert'" /> {{ error }}</p>
+      <p class="error" role="alert"><icon name="lucide:circle-alert" /> {{ error }}</p>
     }
   </form>
 
@@ -63,15 +61,15 @@
     <ol class="log">
       @for (note of notes.value; track note.id) {
         <li [class.fresh]="note.id === fresh">
-          <time [datetime]="note.created_at"><Icon [name]="'clock'" /> {{ stamp(note.created_at) }}</time>
+          <time [datetime]="note.created_at"><icon name="lucide:clock" /> {{ stamp(note.created_at) }}</time>
           <p>{{ note.body }}</p>
         </li>
       } @empty {
-        <li class="empty"><Icon [name]="'inbox'" /><p>No notes yet. Your first one goes straight into Postgres.</p></li>
+        <li class="empty"><icon name="lucide:inbox" /><p>No notes yet. Your first one goes straight into Postgres.</p></li>
       }
     </ol>
   } @else if (notes.error) {
-    <p class="error" role="alert"><Icon [name]="'alert'" /> Notes couldn’t load. The database may be starting up. Reload the page in a moment.</p>
+    <p class="error" role="alert"><icon name="lucide:circle-alert" /> Notes couldn’t load. The database may be starting up. Reload the page in a moment.</p>
   } @else {
     <p class="muted">Loading notes…</p>
   }
