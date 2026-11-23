@@ -1,0 +1,13 @@
+@import BaseLayout from '~/layout/base-layout.tscl'
+
+<BaseLayout>
+  <main>
+    <h1>Hello</h1>
+    <p>This page is plain HTML.</p>
+  </main>
+</BaseLayout>
+<style scoped>
+  h1 {
+   color: rgba(83, 240, 15, 0.967);
+  }
+</style>
