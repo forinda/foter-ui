@@ -13,6 +13,7 @@ ENV NODE_ENV=production
 COPY --chown=node:node --from=build /app/package.json /app/vite.config.ts ./
 COPY --chown=node:node --from=build /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/dist ./dist
-USER node
+# Numeric, so Kubernetes runAsNonRoot can verify it (the image's `node` user is 1000).
+USER 1000:1000
 EXPOSE 3000
 CMD ["node_modules/.bin/vite", "preview", "--host", "0.0.0.0", "--port", "3000", "--strictPort"]
