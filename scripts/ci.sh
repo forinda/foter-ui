@@ -11,7 +11,7 @@
 #   REGISTRY_TOKEN          image: DigitalOcean token with registry read/write; unset = use your
 #                           existing `docker login`
 #   INFRA_REPO              deploy-staging: owner/repo, default forinda/forinda-tf-playground
-#   GH_TOKEN                deploy-staging: GitHub token that may dispatch to INFRA_REPO
+#   GH_TOKEN                deploy-staging: GitHub token that may dispatch to INFRA_REPO (in CI: the deployer App)
 #                           (unset = your `gh auth` login)
 set -euo pipefail
 cd "$(dirname "$0")/.."
