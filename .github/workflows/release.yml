@@ -9,7 +9,9 @@ name: Release
 #   vars.REGISTRY                        registry.digitalocean.com/<name>
 #   vars.INFRA_REPO                      owner/repo of the infra repo (default forinda/forinda-tf-playground)
 #   secrets.DIGITALOCEAN_REGISTRY_TOKEN  DigitalOcean token, scope registry: read/write
-#   secrets.DEPLOY_DISPATCH_TOKEN        fine-grained GitHub token on the infra repo, Contents: read/write
+#   vars.DEPLOYER_CLIENT_ID              Client ID of the deployer GitHub App (installed on the infra repo only)
+#   secrets.DEPLOYER_PRIVATE_KEY         its private key (.pem). Each run mints a 1-hour token that can only
+#                                        write to the infra repo; nothing long-lived to expire or leak
 on:
   push:
     branches: [main]
@@ -49,12 +51,26 @@ jobs:
   deploy-staging:
     needs: image
     runs-on: ubuntu-latest
+    env:
+      INFRA_REPO: ${{ vars.INFRA_REPO || 'forinda/forinda-tf-playground' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: infra
+        run: |
+          [[ $INFRA_REPO =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "invalid INFRA_REPO '$INFRA_REPO'"; exit 1; }
+          { echo "owner=${INFRA_REPO%/*}"; echo "name=${INFRA_REPO#*/}"; } >> "$GITHUB_OUTPUT"
+      # A token for the infra repo only, Contents: write (what repository_dispatch needs), revoked after the job.
+      - id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.DEPLOYER_CLIENT_ID }}
+          private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          owner: ${{ steps.infra.outputs.owner }}
+          repositories: ${{ steps.infra.outputs.name }}
+          permission-contents: write
       - env:
           TAG: ${{ needs.image.outputs.tag }}
-          GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
-          INFRA_REPO: ${{ vars.INFRA_REPO || 'forinda/forinda-tf-playground' }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
         run: |
           scripts/ci.sh deploy-staging
           echo "Requested staging deploy of foter-ui:$TAG in $INFRA_REPO." >> "$GITHUB_STEP_SUMMARY"
